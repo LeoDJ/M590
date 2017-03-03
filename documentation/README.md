@@ -17,8 +17,8 @@ PCB Pin | M590 Pin | Signal | Description
 -------- | ------- | ------ | -----------
 1/2 | 1 | GND | Ground
 3/4 | 2/3 | VBAT | Vcc (3.3-4.5V)
-7 | 7 | RXD | Serial RX (3.3V max)
-8 | 8 | TXD | Serial TX (3.3V max)
+7 | 8 | TXD | Serial TX (3.3V max)
+8 | 7 | RXD | Serial RX (3.3V max)
 12 | 10 | RING | Active Low (for signal details, see [datasheet](m590 datasheet.pdf), page 19)
 14 | 19 | ON/OFF | Active Low, enables the module <br>(ready after 300ms)
 
