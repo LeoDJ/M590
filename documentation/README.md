@@ -8,12 +8,10 @@ Operating Current | 210mA
 Peak Current | 2A
 Sleep Mode Current | 2.5mA
 Supply Voltage | 3.3V - 4.5V <br>(recommended: 3.9V)
-for more specs, look into the [Datasheet](m590 datasheet.pdf), page 6.
+for more specs, look into the [datasheet](m590 datasheet.pdf), page 6.
 
 ##Pinout
-Because there is no official pinout of the header on the Banggood adapter pcb, I created my own. Here is the pinout of the module:  
-![Neoway M590 banggood module pinout](M590%20pinout.jpg?raw=true)
-
+Because there is no official pinout diagram of the header on the Banggood adapter pcb, I created my own. Here is the pinout of the module:
 
 PCB Pin | M590 Pin | Signal | Description
 -------- | ------- | ------ | -----------
@@ -26,3 +24,6 @@ PCB Pin | M590 Pin | Signal | Description
 
 Attention: The I/O level on the pins is only 3.3V **MAX**, because the module operates on an internal reference voltage of 2.85V.  
 Supply voltage is 3.3V~4.5V.
+![Neoway M590 banggood module pinout](M590%20pinout.jpg?raw=true)
+
+
