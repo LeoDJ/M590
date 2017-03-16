@@ -11,6 +11,7 @@ by Leandro Späth
 
 #define COMMAND_TIMEOUT 1000
 #define ASYNC_TIMEOUT   10000
+#define STATUS_POLLING_RATE 250
 
 enum m590ResponseCode {
     M590_SUCCESS,
@@ -23,18 +24,27 @@ enum m590ResponseCode {
 };
 
 enum m590States {
-    M590_STATE_SHUTDOWN,
+    M590_STATE_SHUTDOWN,                        //0
     M590_STATE_STARTUP,
     M590_STATE_STARTUP_DONE,
     M590_STATE_PIN_REQUIRED,
     M590_STATE_PIN_ENTRY_DONE,
-    M590_STATE_PIN_VALIDATION,
-    M590_STATE_PIN_VALIDATION_READ,
+    M590_STATE_PIN_VALIDATION,                  //5
     M590_STATE_PIN_VALIDATION_DONE,
     M590_STATE_CELLULAR_CONNECTING,
     M590_STATE_CELLULAR_CONNECTED,
-    M590_STATE_FATAL_ERROR
+    M590_STATE_FATAL_ERROR                      //9
 };
+
+enum m590NetworkStates {
+    M590_NET_NOT_REGISTERED_NOT_SEARCHING,
+    M590_NET_REGISTERED,
+    M590_NET_REGISTRATION_REFUSED,
+    M590_NET_SEARCHING_NOT_REGISTERED,
+    M590_NET_UNKNOWN,
+    M590_NET_REGISTERED_ROAMING,
+    M590_NET_PARSE_ERROR, //not actually part of response, used to determine function failure
+}
 
 class M590 {
 public:
@@ -64,6 +74,8 @@ public:
 
     bool sendPinEntry(String pin, void(*callback)(void) = NULL);
 
+    m590NetworkStates M590::checkNetworkState();
+
     bool waitForRegistration(const unsigned int timeout);
 
 private:
@@ -90,6 +102,7 @@ private:
     m590ResponseCode readForAsyncResponse(const char *progmemResponseString = NULL,
                                           const unsigned int timeout = ASYNC_TIMEOUT);
 
+    //if given a buffer pointer, the buffer will contain the response data after the colon
     m590ResponseCode readForResponse(const char *progmemResponseString,
                                      char *buffer = NULL,
                                      const unsigned int max_bytes = 0,

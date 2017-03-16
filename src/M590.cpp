@@ -40,26 +40,26 @@ const char
 
 
 const char
-        M590_LOG_01[]   PROGMEM = "Shutdown",
-        M590_LOG_02[]   PROGMEM = "In Startup",
-        M590_LOG_03[]   PROGMEM = "Module is active.",
-        M590_LOG_04[]   PROGMEM = "Pin entry is required",
-        M590_LOG_05[]   PROGMEM = "Pin entry successful",
-        M590_LOG_06[]   PROGMEM = "Pin is being validated",
-        M590_LOG_06_1[] PROGMEM = "(Pin validation response)",
-        M590_LOG_07[]   PROGMEM = "Pin validation successful",
-        M590_LOG_08[]   PROGMEM = "Registering on cellular network",
-        M590_LOG_09[]   PROGMEM = "Connected to cellular network";
+        M590_LOG_00[]   PROGMEM = "Shutdown",
+        M590_LOG_01[]   PROGMEM = "In Startup",
+        M590_LOG_02[]   PROGMEM = "Module is active.",
+        M590_LOG_03[]   PROGMEM = "Pin entry is required",
+        M590_LOG_04[]   PROGMEM = "Pin entry successful",
+        M590_LOG_05[]   PROGMEM = "Pin is being validated",
+        M590_LOG_06[]   PROGMEM = "Pin validation successful",
+        M590_LOG_07[]   PROGMEM = "Registering on cellular network",
+        M590_LOG_08[]   PROGMEM = "Connected to cellular network",
+        M590_LOG_09[]   PROGMEM = "A fatal error occured, library can not continue";
 
 //crude method of accessing multiple progmem Strings easily // index corresponds to m590States
 const char *M590_LOG[] = {
+        M590_LOG_00,
         M590_LOG_01,
         M590_LOG_02,
         M590_LOG_03,
         M590_LOG_04,
         M590_LOG_05,
         M590_LOG_06,
-        M590_LOG_06_1,
         M590_LOG_07,
         M590_LOG_08,
         M590_LOG_09,
@@ -136,7 +136,34 @@ void M590::loop() {
                 if (_debugSerial) _debugSerial->print((__FlashStringHelper *) M590_ERROR_PINVAL_TIMEOUT);
             }
             break;
+
         case M590_STATE_PIN_VALIDATION_DONE:
+            _currentState = M590_STATE_CELLULAR_CONNECTING;
+            break;
+
+        case M590_STATE_CELLULAR_CONNECTING:
+            unsigned long curMillis = millis();
+            if(_asyncStartTime == 0) _asyncStartTime = curMillis; //repurpouse asyncStartTime variable
+            else if(curMillis >= _asyncStartTime + STATUS_POLLING_RATE) {
+                m590NetworkStates netState = checkNetworkState();
+                if(netState == M590_NET_REGISTERED)
+                    _currentState = M590_STATE_CELLULAR_CONNECTED;
+                else if(netState == M590_NET_SEARCHING_NOT_REGISTERED) {
+                    if(_debugSerial)_debugSerial->print('.'); //print dots to show wait for registration
+                }
+                else {
+                    _currentState = M590_STATE_FATAL_ERROR;
+                    if(_debugSerial) {
+                        _debugSerial->print((__FlashStringHelper*) M590_ERROR_UNHANDLED_NET_STATE);
+                        _debugSerial->println(netState);
+                    }
+                }
+                _asyncStartTime = curMillis;
+            }
+            break;
+
+        case M590_STATE_FATAL_ERROR:
+            //reset the library and try again
             break;
     }
     if (_debugSerial && _previousState != _currentState) {
@@ -187,6 +214,16 @@ bool M590::sendPinEntry(String pin, void (*callback)(void)) {
         return success;
     }
     return false;
+}
+
+m590NetworkStates M590::checkNetworkState() {
+    sendCommand(M590_COMMAND_CHECK_NETWORK_STATUS);
+    memset(_responseBuffer, 0, sizeof(_responseBuffer));
+    m590ResponseCode r = readForResponse(M590_RESPONSE_OK, _responseBuffer, sizeof(_responseBuffer));
+    _debugSerial->println("\n" + _responseBuffer); //debug, TODO: remove
+    //the fourth char in the response (e.g. " 0,3") will be the registration state (e.g. 3)
+    if(r == M590_SUCCESS) return _responseBuffer[3]-'0'; //convert to integer, maps to m590NetworkStates
+    else return M590_NET_PARSE_ERROR;
 }
 
 
@@ -379,7 +416,3 @@ bool M590::bufferStartsWithProgmem(char *buffer, const char *progmemString) {
     }
     return matches;
 }
-
-
-
-
