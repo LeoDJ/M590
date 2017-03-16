@@ -18,6 +18,7 @@ enum m590ResponseCode {
     M590_TIMEOUT,
     M590_LENGTH_EXCEEDED,
     M590_ASYNC_RUNNING,
+    M590_NO_PARAMETERS,
     M590_UNDEFINED
 };
 
@@ -28,9 +29,11 @@ enum m590States {
     M590_STATE_PIN_REQUIRED,
     M590_STATE_PIN_ENTRY_DONE,
     M590_STATE_PIN_VALIDATION,
+    M590_STATE_PIN_VALIDATION_READ,
     M590_STATE_PIN_VALIDATION_DONE,
     M590_STATE_CELLULAR_CONNECTING,
     M590_STATE_CELLULAR_CONNECTED,
+    M590_STATE_FATAL_ERROR
 };
 
 class M590 {
@@ -51,13 +54,17 @@ public:
 
     void print(String s);
 
-    void initialize(String pin = "");
+    bool initialize(String pin = "");
 
     void loop();
 
     bool checkAlive(void(*callback)(void) = NULL);
 
-    bool checkPinRequired(void(*callback)(void) = NULL);
+    bool checkPinRequired();
+
+    bool sendPinEntry(String pin, void(*callback)(void) = NULL);
+
+    bool waitForRegistration(const unsigned int timeout);
 
 private:
     SoftwareSerial *_gsmSerial;
@@ -65,6 +72,10 @@ private:
     m590States _currentState = M590_STATE_SHUTDOWN;
     m590States _previousState = M590_STATE_SHUTDOWN;
     unsigned long _asyncStartTime = 0;
+    byte _asyncBytesMatched = 0;
+    byte _asyncResponseLength = 0;
+    const char *_asyncProgmemResponseString = NULL;
+    char _responseBuffer[16];
 
     byte asyncMatchedChars = 0;
 
@@ -74,10 +85,14 @@ private:
     void sendCommand(const char *progmemCommand,
                      const char *params = NULL);
 
-    m590ResponseCode readForAsyncResponse(const char *progmemResponseString,
+    void resetAsyncVariables();
+
+    m590ResponseCode readForAsyncResponse(const char *progmemResponseString = NULL,
                                           const unsigned int timeout = ASYNC_TIMEOUT);
 
     m590ResponseCode readForResponse(const char *progmemResponseString,
+                                     char *buffer = NULL,
+                                     const unsigned int max_bytes = 0,
                                      const unsigned int timeout = COMMAND_TIMEOUT);
 
     m590ResponseCode readForResponses(const char *progmemResponseString,
@@ -92,6 +107,8 @@ private:
     m590ResponseCode readUntil(const char readUntil,
                                const unsigned int timeout = COMMAND_TIMEOUT);
 
+    bool bufferStartsWithProgmem(char *buffer,
+                                 const char *progmemString);
 };
 
 #endif

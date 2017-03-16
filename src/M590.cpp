@@ -17,20 +17,26 @@ const char
         M590_COMMAND_GET_NATIVE_NUMBER[]        PROGMEM = "CNUM";
 
 const char
-        M590_RESPONSE_PREFIX[]       PROGMEM = "+",
-        M590_RESPONSE_SEPERATOR[]    PROGMEM = ": ",
-        M590_RESPONSE_OK[]           PROGMEM = "OK\r\n",
-        M590_RESPONSE_ERROR[]        PROGMEM = "ERROR\r\n",
-        M590_RESPONSE_FAIL[]         PROGMEM = "FAIL\r\n";
+        M590_RESPONSE_PREFIX[]          PROGMEM = "\r\n+",
+        M590_RESPONSE_SEPERATOR[]       PROGMEM = ": ",
+        M590_RESPONSE_OK[]              PROGMEM = "OK\r\n",
+        M590_RESPONSE_ERROR[]           PROGMEM = "ERROR\r\n",
+        M590_RESPONSE_FAIL[]            PROGMEM = "FAIL\r\n",
+        M590_RESPONSE_PIN_REQUIRED[]    PROGMEM = " SIM PIN",
+        M590_RESPONSE_PIN_DONE[]        PROGMEM = " READY",
+        M590_RESPONSE_PIN_VAL_DONE[]    PROGMEM = "+PBREADY\r\n";
 
 const char
-        M590_AT[]                    PROGMEM = "AT",
-        M590_CRLF[]                  PROGMEM = "\r\n",
-        M590_COMMAND_PREFIX[]        PROGMEM = "AT+",
-        M590_CONTENT_LENGTH_HEADER[] PROGMEM = "Content-Length: ";
+        M590_AT[]                       PROGMEM = "AT",
+        M590_CRLF[]                     PROGMEM = "\r\n",
+        M590_COMMAND_PREFIX[]           PROGMEM = "AT+",
+        M590_CONTENT_LENGTH_HEADER[]    PROGMEM = "Content-Length: ";
 
 const char
-        M590_ERROR_NOT_RESPONDING[] PROGMEM = "The M590 did not respond to an \"AT\". Please check serial connection, power supply and ONOFF pin.";
+        M590_ERROR_NOT_RESPONDING[] PROGMEM = "The M590 did not respond to an \"AT\". Please check serial connection, power supply and ONOFF pin.",
+        M590_ERROR_NO_PIN[]         PROGMEM = "No pin was specified, but the module requests one",
+        M590_ERROR_OTHER_PIN_ERR[]  PROGMEM = "Error during PIN check, maybe a PUK is required, please check SIM card in a phone",
+        M590_ERROR_PINVAL_TIMEOUT[] PROGMEM = "Timeout during pin validation, please check module and try again";
 
 
 const char
@@ -40,11 +46,12 @@ const char
         M590_LOG_04[]   PROGMEM = "Pin entry is required",
         M590_LOG_05[]   PROGMEM = "Pin entry successful",
         M590_LOG_06[]   PROGMEM = "Pin is being validated",
+        M590_LOG_06_1[] PROGMEM = "(Pin validation response)",
         M590_LOG_07[]   PROGMEM = "Pin validation successful",
         M590_LOG_08[]   PROGMEM = "Registering on cellular network",
         M590_LOG_09[]   PROGMEM = "Connected to cellular network";
 
-//crude method of accessing multiple progmem Strings easily
+//crude method of accessing multiple progmem Strings easily // index corresponds to m590States
 const char *M590_LOG[] = {
         M590_LOG_01,
         M590_LOG_02,
@@ -52,6 +59,7 @@ const char *M590_LOG[] = {
         M590_LOG_04,
         M590_LOG_05,
         M590_LOG_06,
+        M590_LOG_06_1,
         M590_LOG_07,
         M590_LOG_08,
         M590_LOG_09,
@@ -92,10 +100,25 @@ void M590::print(const String s) {
     _gsmSerial->print(s);
 }
 
-void M590::initialize(String pin) {
+bool M590::initialize(String pin) {
+    bool tmp;
     if (!checkAlive() && _debugSerial) //checkAlive still gets executed
         _debugSerial->println((__FlashStringHelper *) M590_ERROR_NOT_RESPONDING);
-
+    tmp = checkPinRequired();
+    if (_currentState == M590_STATE_FATAL_ERROR)
+        return false;
+    else if (tmp) {
+        if (pin && pin != "")
+            tmp = sendPinEntry(pin);
+        else {
+            if (_debugSerial) _debugSerial->println((__FlashStringHelper *) M590_ERROR_NO_PIN);
+            return false;
+        }
+    }
+    if (tmp && _currentState == M590_STATE_PIN_ENTRY_DONE) {
+        _currentState = M590_STATE_PIN_VALIDATION;
+        readForAsyncResponse(M590_RESPONSE_PIN_VAL_DONE); //start asnyc reading (execution continued in loop())
+    }
 }
 
 //thee loop gets called every arduino code to handle "async" responses
@@ -105,10 +128,15 @@ void M590::loop() {
             break;
 
         case M590_STATE_PIN_VALIDATION:
-            if (_gsmSerial->available()) {
-                //is byte +
-
+            m590ResponseCode status = readForAsyncResponse(); //call function with last entered parameters
+            if (status == M590_SUCCESS)
+                _currentState = M590_STATE_PIN_VALIDATION_DONE;
+            else if (status == M590_TIMEOUT) {
+                _currentState = M590_STATE_FATAL_ERROR;
+                if (_debugSerial) _debugSerial->print((__FlashStringHelper *) M590_ERROR_PINVAL_TIMEOUT);
             }
+            break;
+        case M590_STATE_PIN_VALIDATION_DONE:
             break;
     }
     if (_debugSerial && _previousState != _currentState) {
@@ -129,12 +157,36 @@ bool M590::checkAlive(void(*callback)(void)) {
     } else return false;
 }
 
-bool M590::checkPinRequired(void (*callback)(void)) {
-    if(_currentState == M590_STATE_STARTUP_DONE) {
+bool M590::checkPinRequired() {
+    if (_currentState == M590_STATE_STARTUP_DONE) {
         sendCommand(M590_COMMAND_CHECK_PIN);
+        memset(_responseBuffer, 0, sizeof(_responseBuffer));
+        readForResponse(M590_RESPONSE_OK, _responseBuffer, sizeof(_responseBuffer));
+        bool required = bufferStartsWithProgmem(_responseBuffer, M590_RESPONSE_PIN_REQUIRED);
+        //check if module does not need pin entry
+        bool alreadyReady = bufferStartsWithProgmem(_responseBuffer, M590_RESPONSE_PIN_DONE);
+        _currentState = required ? M590_STATE_PIN_REQUIRED : M590_STATE_PIN_VALIDATION_DONE;
+        if (!required && !alreadyReady) {
+            _currentState = M590_STATE_FATAL_ERROR;
+            if (_debugSerial) _debugSerial->print((__FlashStringHelper *) M590_ERROR_OTHER_PIN_ERR);
+        }
+        return required; //returns true, if pin is required
+    } else return false;
+}
 
+bool M590::sendPinEntry(String pin, void (*callback)(void)) {
+    if (_currentState == M590_STATE_PIN_REQUIRED) {
+        _gsmSerial->print((__FlashStringHelper *) M590_COMMAND_PREFIX);
+        _gsmSerial->print((__FlashStringHelper *) M590_COMMAND_INPUT_PIN);
+        _gsmSerial->print('"');
+        _gsmSerial->print(pin);
+        _gsmSerial->print('"');
+        _gsmSerial->println();
+        bool success = readForResponses(M590_RESPONSE_OK, M590_RESPONSE_FAIL) == M590_SUCCESS;
+        if (success) _currentState = M590_STATE_PIN_ENTRY_DONE;
+        return success;
     }
-    else return false;
+    return false;
 }
 
 
@@ -153,28 +205,93 @@ void M590::sendCommandWithoutPrefix(const char *progmemCommand, const char *para
     _gsmSerial->println(); //terminate with CLRF
 }
 
+void M590::resetAsyncVariables() {
+    _asyncStartTime = 0;
+    _asyncBytesMatched = 0;
+    _asyncResponseLength = 0;
+    _asyncProgmemResponseString = NULL;
+}
+
 m590ResponseCode M590::readForAsyncResponse(const char *progmemResponseString, const unsigned int timeout) {
     if (_asyncStartTime == 0)
         _asyncStartTime = millis();
-    if (millis() > _asyncStartTime + timeout)
+    if (!_asyncProgmemResponseString && progmemResponseString) {
+        //save responseString pointer to look for in private variable (so async function can be called without parameters)
+        _asyncProgmemResponseString = progmemResponseString;
+        _asyncResponseLength = strlen_P(progmemResponseString);
+    } else if (!_asyncProgmemResponseString && !progmemResponseString) {
+        //return when function is called for the first time without any parameters
+        return M590_NO_PARAMETERS;
+    }
+    if (millis() > _asyncStartTime + timeout) {
+        resetAsyncVariables();
         return M590_TIMEOUT;
+    }
+
+    while (_gsmSerial->available()) {
+        char c = (char) _gsmSerial->read();
+        if (c == pgm_read_byte_near(progmemResponseString + _asyncBytesMatched)) {
+            _asyncBytesMatched++;
+            if (_asyncBytesMatched == _asyncResponseLength) {
+                resetAsyncVariables();
+                return M590_SUCCESS;
+            } else
+                _asyncBytesMatched = 0;
+        }
+    }
+    return M590_ASYNC_RUNNING;
 
 }
 
-m590ResponseCode M590::readForResponse(const char *progmemResponseString, const unsigned int timeout) {
+m590ResponseCode M590::readForResponse(const char *progmemResponseString, char *buffer, const unsigned int max_bytes,
+                                       const unsigned int timeout) {
+    byte dataMatched = 0, dataRead = 0;
+    byte readingData = 0; //state
+    byte dataLength = strlen_P(M590_RESPONSE_PREFIX);
     byte matched = 0;
     byte responseLength = strlen_P(progmemResponseString);
+
     unsigned long startTime = millis();
 
     while (millis() < (startTime + timeout)) {
         if (_gsmSerial->available()) {
-            if (_gsmSerial->read() == pgm_read_byte_near(progmemResponseString + matched)) {
-                matched++;
-                if (matched == responseLength) {
-                    return M590_SUCCESS;
+            char c = (char) _gsmSerial->read();
+            if (c == pgm_read_byte_near(M590_RESPONSE_PREFIX + dataMatched)) { //check if a return data message begins
+                dataMatched++;
+                if (dataMatched == dataLength) { //when return data begins
+                    readingData = 1;
+                    dataMatched = 0;
                 }
-            } else
-                matched = 0;
+            } else {
+                dataMatched = 0;
+            }
+            if (readingData) { //if in reading return data mode
+
+                if (readingData == 1 && c == ':') //before colon, there is only the command echoed back
+                    readingData = 2;
+                else if (readingData == 2) { //if at actual data
+                    //_debugSerial->print(c);
+                    if (c == '\r') { //if reached end of return data
+                        readingData = false;
+                    } else {
+                        buffer[dataRead] = c;
+                        dataRead++;
+                        if (dataRead >= (max_bytes - 1)) { //if read more than buffer size
+                            buffer[dataRead] = 0;
+                            return M590_LENGTH_EXCEEDED;
+                        }
+                    }
+                }
+            } else {
+                if (c == pgm_read_byte_near(progmemResponseString + matched)) {
+                    matched++;
+                    if (matched == responseLength) {
+                        return M590_SUCCESS;
+                    }
+                } else
+                    matched = 0;
+
+            }
         }
     }
     //timeout reached
@@ -254,6 +371,15 @@ m590ResponseCode M590::readUntil(const char readUntil, const unsigned int timeou
     }
     return M590_TIMEOUT;
 }
+
+bool M590::bufferStartsWithProgmem(char *buffer, const char *progmemString) {
+    bool matches = true;
+    for (int i = 0; i < strlen_P(progmemString); i++) {
+        matches = buffer[i] == pgm_read_byte_near(progmemString + i);
+    }
+    return matches;
+}
+
 
 
 
