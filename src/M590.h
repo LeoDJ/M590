@@ -10,7 +10,7 @@ by Leandro Späth
 #include <SoftwareSerial.h>
 
 #define COMMAND_TIMEOUT 1000
-#define ASYNC_TIMEOUT   10000
+#define ASYNC_TIMEOUT   20000
 #define STATUS_POLLING_RATE 250
 
 enum m590ResponseCode {
@@ -44,7 +44,7 @@ enum m590NetworkStates {
     M590_NET_UNKNOWN,
     M590_NET_REGISTERED_ROAMING,
     M590_NET_PARSE_ERROR, //not actually part of response, used to determine function failure
-}
+};
 
 class M590 {
 public:
@@ -74,7 +74,7 @@ public:
 
     bool sendPinEntry(String pin, void(*callback)(void) = NULL);
 
-    m590NetworkStates M590::checkNetworkState();
+    m590NetworkStates checkNetworkState();
 
     bool waitForRegistration(const unsigned int timeout);
 

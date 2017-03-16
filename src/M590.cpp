@@ -17,14 +17,14 @@ const char
         M590_COMMAND_GET_NATIVE_NUMBER[]        PROGMEM = "CNUM";
 
 const char
-        M590_RESPONSE_PREFIX[]          PROGMEM = "\r\n+",
+        M590_RESPONSE_PREFIX[]          PROGMEM = "+",//"\r\n+",
         M590_RESPONSE_SEPERATOR[]       PROGMEM = ": ",
         M590_RESPONSE_OK[]              PROGMEM = "OK\r\n",
         M590_RESPONSE_ERROR[]           PROGMEM = "ERROR\r\n",
         M590_RESPONSE_FAIL[]            PROGMEM = "FAIL\r\n",
         M590_RESPONSE_PIN_REQUIRED[]    PROGMEM = " SIM PIN",
         M590_RESPONSE_PIN_DONE[]        PROGMEM = " READY",
-        M590_RESPONSE_PIN_VAL_DONE[]    PROGMEM = "+PBREADY\r\n";
+        M590_RESPONSE_PIN_VAL_DONE[]    PROGMEM = "+PBREADY";
 
 const char
         M590_AT[]                       PROGMEM = "AT",
@@ -33,10 +33,11 @@ const char
         M590_CONTENT_LENGTH_HEADER[]    PROGMEM = "Content-Length: ";
 
 const char
-        M590_ERROR_NOT_RESPONDING[] PROGMEM = "The M590 did not respond to an \"AT\". Please check serial connection, power supply and ONOFF pin.",
-        M590_ERROR_NO_PIN[]         PROGMEM = "No pin was specified, but the module requests one",
-        M590_ERROR_OTHER_PIN_ERR[]  PROGMEM = "Error during PIN check, maybe a PUK is required, please check SIM card in a phone",
-        M590_ERROR_PINVAL_TIMEOUT[] PROGMEM = "Timeout during pin validation, please check module and try again";
+        M590_ERROR_NOT_RESPONDING[]         PROGMEM = "\nThe M590 did not respond to an \"AT\". Please check serial connection, power supply and ONOFF pin.",
+        M590_ERROR_NO_PIN[]                 PROGMEM = "\nNo pin was specified, but the module requests one",
+        M590_ERROR_OTHER_PIN_ERR[]          PROGMEM = "\nError during PIN check, maybe a PUK is required, please check SIM card in a phone",
+        M590_ERROR_PINVAL_TIMEOUT[]         PROGMEM = "\nTimeout during pin validation, please check module and try again",
+        M590_ERROR_UNHANDLED_NET_STATE[]    PROGMEM = "\nNetwork status returned unhandled state: ";
 
 
 const char
@@ -127,47 +128,50 @@ void M590::loop() {
         case M590_STATE_STARTUP_DONE:
             break;
 
-        case M590_STATE_PIN_VALIDATION:
+        case M590_STATE_PIN_VALIDATION: {
             m590ResponseCode status = readForAsyncResponse(); //call function with last entered parameters
             if (status == M590_SUCCESS)
                 _currentState = M590_STATE_PIN_VALIDATION_DONE;
             else if (status == M590_TIMEOUT) {
                 _currentState = M590_STATE_FATAL_ERROR;
-                if (_debugSerial) _debugSerial->print((__FlashStringHelper *) M590_ERROR_PINVAL_TIMEOUT);
+                if (_debugSerial) _debugSerial->println((__FlashStringHelper *) M590_ERROR_PINVAL_TIMEOUT);
             }
             break;
+        }
 
-        case M590_STATE_PIN_VALIDATION_DONE:
+        case M590_STATE_PIN_VALIDATION_DONE: {
             _currentState = M590_STATE_CELLULAR_CONNECTING;
             break;
+        }
 
-        case M590_STATE_CELLULAR_CONNECTING:
+        case M590_STATE_CELLULAR_CONNECTING: {
             unsigned long curMillis = millis();
-            if(_asyncStartTime == 0) _asyncStartTime = curMillis; //repurpouse asyncStartTime variable
-            else if(curMillis >= _asyncStartTime + STATUS_POLLING_RATE) {
+            if (_asyncStartTime == 0) _asyncStartTime = curMillis; //repurpose asyncStartTime variable
+            else if (curMillis >= _asyncStartTime + STATUS_POLLING_RATE) {
                 m590NetworkStates netState = checkNetworkState();
-                if(netState == M590_NET_REGISTERED)
+                if (netState == M590_NET_REGISTERED)
                     _currentState = M590_STATE_CELLULAR_CONNECTED;
-                else if(netState == M590_NET_SEARCHING_NOT_REGISTERED) {
-                    if(_debugSerial)_debugSerial->print('.'); //print dots to show wait for registration
-                }
-                else {
+                else if (netState == M590_NET_SEARCHING_NOT_REGISTERED) {
+                    if (_debugSerial)_debugSerial->print('.'); //print dots to show wait for registration
+                } else {
                     _currentState = M590_STATE_FATAL_ERROR;
-                    if(_debugSerial) {
-                        _debugSerial->print((__FlashStringHelper*) M590_ERROR_UNHANDLED_NET_STATE);
+                    if (_debugSerial) {
+                        _debugSerial->print((__FlashStringHelper *) M590_ERROR_UNHANDLED_NET_STATE);
                         _debugSerial->println(netState);
                     }
                 }
                 _asyncStartTime = curMillis;
             }
             break;
+        }
 
-        case M590_STATE_FATAL_ERROR:
+        case M590_STATE_FATAL_ERROR: {
             //reset the library and try again
             break;
+        }
     }
     if (_debugSerial && _previousState != _currentState) {
-        _debugSerial->print((__FlashStringHelper *) M590_LOG[_currentState]);
+        _debugSerial->println((__FlashStringHelper *) M590_LOG[_currentState]);
     }
     _previousState = _currentState;
 }
@@ -195,7 +199,7 @@ bool M590::checkPinRequired() {
         _currentState = required ? M590_STATE_PIN_REQUIRED : M590_STATE_PIN_VALIDATION_DONE;
         if (!required && !alreadyReady) {
             _currentState = M590_STATE_FATAL_ERROR;
-            if (_debugSerial) _debugSerial->print((__FlashStringHelper *) M590_ERROR_OTHER_PIN_ERR);
+            if (_debugSerial) _debugSerial->println((__FlashStringHelper *) M590_ERROR_OTHER_PIN_ERR);
         }
         return required; //returns true, if pin is required
     } else return false;
@@ -220,9 +224,9 @@ m590NetworkStates M590::checkNetworkState() {
     sendCommand(M590_COMMAND_CHECK_NETWORK_STATUS);
     memset(_responseBuffer, 0, sizeof(_responseBuffer));
     m590ResponseCode r = readForResponse(M590_RESPONSE_OK, _responseBuffer, sizeof(_responseBuffer));
-    _debugSerial->println("\n" + _responseBuffer); //debug, TODO: remove
     //the fourth char in the response (e.g. " 0,3") will be the registration state (e.g. 3)
-    if(r == M590_SUCCESS) return _responseBuffer[3]-'0'; //convert to integer, maps to m590NetworkStates
+    if (r == M590_SUCCESS)
+        return (m590NetworkStates) _responseBuffer[3] - '0'; //convert to integer, maps to m590NetworkStates
     else return M590_NET_PARSE_ERROR;
 }
 
@@ -267,14 +271,14 @@ m590ResponseCode M590::readForAsyncResponse(const char *progmemResponseString, c
 
     while (_gsmSerial->available()) {
         char c = (char) _gsmSerial->read();
-        if (c == pgm_read_byte_near(progmemResponseString + _asyncBytesMatched)) {
+        if (c == pgm_read_byte_near(_asyncProgmemResponseString + _asyncBytesMatched)) {
             _asyncBytesMatched++;
             if (_asyncBytesMatched == _asyncResponseLength) {
                 resetAsyncVariables();
                 return M590_SUCCESS;
-            } else
-                _asyncBytesMatched = 0;
-        }
+            }
+        } else
+            _asyncBytesMatched = 0;
     }
     return M590_ASYNC_RUNNING;
 
