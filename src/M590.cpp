@@ -35,6 +35,7 @@ const char
 const char
         M590_ERROR_NOT_RESPONDING[]         PROGMEM = "\nThe M590 did not respond to an \"AT\". Please check serial connection, power supply and ONOFF pin.",
         M590_ERROR_NO_PIN[]                 PROGMEM = "\nNo pin was specified, but the module requests one",
+        M590_ERROR_WRONG_PIN[]              PROGMEM = "\nWrong PIN was entered, down one try.",
         M590_ERROR_OTHER_PIN_ERR[]          PROGMEM = "\nError during PIN check, maybe a PUK is required, please check SIM card in a phone",
         M590_ERROR_PINVAL_TIMEOUT[]         PROGMEM = "\nTimeout during pin validation, please check module and try again",
         M590_ERROR_UNHANDLED_NET_STATE[]    PROGMEM = "\nNetwork status returned unhandled state: ";
@@ -119,6 +120,10 @@ bool M590::initialize(String pin) {
     if (tmp && _currentState == M590_STATE_PIN_ENTRY_DONE) {
         _currentState = M590_STATE_PIN_VALIDATION;
         readForAsyncResponse(M590_RESPONSE_PIN_VAL_DONE); //start asnyc reading (execution continued in loop())
+    }
+    else {
+        _currentState = M590_STATE_FATAL_ERROR;
+        logProgmemString(M590_ERROR_WRONG_PIN);
     }
 }
 
@@ -419,4 +424,11 @@ bool M590::bufferStartsWithProgmem(char *buffer, const char *progmemString) {
         matches = buffer[i] == pgm_read_byte_near(progmemString + i);
     }
     return matches;
+}
+
+void logProgmemString(const char* progmemString, bool withNewline) {
+    if(_debugSerial) {
+        _debugSerial->print((__FlashStringHelper*) progmemString);
+        if(withNewline) _debugSerial->println();
+    }
 }
