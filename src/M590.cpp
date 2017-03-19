@@ -145,7 +145,7 @@ void M590::loop() {
                 _currentState = M590_STATE_PIN_VALIDATION_DONE;
             else if (status == M590_TIMEOUT) {
                 _currentState = M590_STATE_FATAL_ERROR;
-                if (_debugSerial) _debugSerial->println((__FlashStringHelper *) M590_ERROR_PINVAL_TIMEOUT);
+                printDebug(M590_ERROR_PINVAL_TIMEOUT);
             }
             break;
         }
@@ -163,13 +163,11 @@ void M590::loop() {
                 if (netState == M590_NET_REGISTERED)
                     _currentState = M590_STATE_CELLULAR_CONNECTED;
                 else if (netState == M590_NET_SEARCHING_NOT_REGISTERED) {
-                    if (_debugSerial)_debugSerial->print('.'); //print dots to show wait for registration
+                    printDebug("."); //print dots to show wait for registration
                 } else {
                     _currentState = M590_STATE_FATAL_ERROR;
-                    if (_debugSerial) {
-                        _debugSerial->print((__FlashStringHelper *) M590_ERROR_UNHANDLED_NET_STATE);
-                        _debugSerial->println(netState);
-                    }
+                    printDebug(M590_ERROR_UNHANDLED_NET_STATE);
+                    printDebug(String(netState), true);
                 }
                 _asyncStartTime = curMillis;
             }
@@ -181,8 +179,8 @@ void M590::loop() {
             break;
         }
     }
-    if (_debugSerial && _previousState != _currentState) {
-        _debugSerial->println((__FlashStringHelper *) M590_LOG[_currentState]);
+    if (_previousState != _currentState) {
+        printDebug(M590_LOG[_currentState]);
     }
     _previousState = _currentState;
 }
@@ -210,7 +208,7 @@ bool M590::checkPinRequired() {
         _currentState = required ? M590_STATE_PIN_REQUIRED : M590_STATE_PIN_VALIDATION_DONE;
         if (!required && !alreadyReady) {
             _currentState = M590_STATE_FATAL_ERROR;
-            if (_debugSerial) _debugSerial->println((__FlashStringHelper *) M590_ERROR_OTHER_PIN_ERR);
+            printDebug(M590_ERROR_OTHER_PIN_ERR);
         }
         return required; //returns true, if pin is required
     } else return false;
@@ -324,7 +322,7 @@ m590ResponseCode M590::readForResponse(const char *progmemResponseString, char *
                 else if (readingData == 2) { //if at actual data
                     //_debugSerial->print(c);
                     if (c == '\r') { //if reached end of return data
-                        readingData = false;
+                        readingData = 0;
                     } else {
                         buffer[dataRead] = c;
                         dataRead++;
@@ -435,6 +433,13 @@ bool M590::bufferStartsWithProgmem(char *buffer, const char *progmemString) {
 void M590::printDebug(const char *progmemString, bool withNewline) {
     if (_debugSerial) {
         _debugSerial->print((__FlashStringHelper *) progmemString);
+        if (withNewline) _debugSerial->println();
+    }
+}
+
+void M590::printDebug(const String s, bool withNewline) {
+    if (_debugSerial) {
+        _debugSerial->print(s);
         if (withNewline) _debugSerial->println();
     }
 }
