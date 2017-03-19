@@ -3,7 +3,7 @@ created March 2017
 by Leandro Späth
 
  This sketch implements the basic functionality of the M590 library.
- It initializes the connection with the module and establishes a cellular link
+ It initializes the connection with the module and establishes a GPRS Link
 */
 
 #include <M590.h>
@@ -22,4 +22,7 @@ void setup()
 void loop()
 {
     gsm.loop(); //the loop method needs to be called often
+    if(gsm.cellularReady()) {
+        //initialize GPRS, needs to be implemented
+    }
 }

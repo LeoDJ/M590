@@ -24,16 +24,16 @@ enum m590ResponseCode {
 };
 
 enum m590States {
-    M590_STATE_SHUTDOWN,                        //0
+    M590_STATE_FATAL_ERROR,                      //0
+    M590_STATE_SHUTDOWN,
     M590_STATE_STARTUP,
     M590_STATE_STARTUP_DONE,
     M590_STATE_PIN_REQUIRED,
-    M590_STATE_PIN_ENTRY_DONE,
-    M590_STATE_PIN_VALIDATION,                  //5
+    M590_STATE_PIN_ENTRY_DONE,                  //5
+    M590_STATE_PIN_VALIDATION,
     M590_STATE_PIN_VALIDATION_DONE,
     M590_STATE_CELLULAR_CONNECTING,
     M590_STATE_CELLULAR_CONNECTED,
-    M590_STATE_FATAL_ERROR                      //9
 };
 
 enum m590NetworkStates {
@@ -58,13 +58,9 @@ public:
 
     int available();
 
-    char read();
-
-    void write(const char c);
-
-    void print(String s);
-
     bool initialize(String pin = "");
+
+    void shutdown();
 
     void loop();
 
@@ -75,6 +71,14 @@ public:
     bool sendPinEntry(String pin, void(*callback)(void) = NULL);
 
     m590NetworkStates checkNetworkState();
+
+    char read();
+
+    void write(const char c);
+
+    void print(String s);
+
+    bool cellularReady();
 
     bool waitForRegistration(const unsigned int timeout);
 
@@ -126,6 +130,7 @@ private:
     void printDebug(const char *progmemString, bool withNewline = true);
 
     void printDebug(const String s, bool withNewline = true);
+
 };
 
 #endif

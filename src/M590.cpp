@@ -58,6 +58,7 @@ const char
 
 //crude method of accessing multiple progmem Strings easily // index corresponds to m590States
 const char *M590_LOG[] = {
+        M590_LOG_09, //fatal moved to 0
         M590_LOG_00,
         M590_LOG_01,
         M590_LOG_02,
@@ -67,7 +68,6 @@ const char *M590_LOG[] = {
         M590_LOG_06,
         M590_LOG_07,
         M590_LOG_08,
-        M590_LOG_09,
 };
 
 
@@ -103,6 +103,15 @@ void M590::write(const char c) {
 
 void M590::print(const String s) {
     _gsmSerial->print(s);
+}
+
+bool M590::cellularReady() {
+    return (_currentState == M590_STATE_CELLULAR_CONNECTED);
+}
+
+void M590::shutdown() {
+    sendCommand(M590_COMMAND_SHUTDOWN);
+    _currentState = M590_STATE_SHUTDOWN;
 }
 
 bool M590::initialize(String pin) {
@@ -229,6 +238,7 @@ bool M590::sendPinEntry(String pin, void (*callback)(void)) {
     return false;
 }
 
+
 m590NetworkStates M590::checkNetworkState() {
     sendCommand(M590_COMMAND_CHECK_NETWORK_STATUS);
     memset(_responseBuffer, 0, sizeof(_responseBuffer));
@@ -238,7 +248,6 @@ m590NetworkStates M590::checkNetworkState() {
         return (m590NetworkStates) (_responseBuffer[3] - '0'); //convert to integer, maps to m590NetworkStates
     else return M590_NET_PARSE_ERROR;
 }
-
 
 void M590::sendCommand(const char *progmemCommand, const char *params) {
     //need to cast to FlashStringHelper for it to correctly read from progmem
