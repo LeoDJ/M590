@@ -123,7 +123,7 @@ private:
     bool bufferStartsWithProgmem(char *buffer,
                                  const char *progmemString);
 
-     void logProgmemString(const char* progmemString, bool withNewline = true);
+    void printDebug(const char *progmemString, bool withNewline = true);
 };
 
 #endif

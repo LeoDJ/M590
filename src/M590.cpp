@@ -42,6 +42,9 @@ const char
 
 
 const char
+        M590_LOG_NO_PIN_REQUIRED[]      PROGMEM = "No PIN was required";
+
+const char
         M590_LOG_00[]   PROGMEM = "Shutdown",
         M590_LOG_01[]   PROGMEM = "In Startup",
         M590_LOG_02[]   PROGMEM = "Module is active.",
@@ -103,27 +106,30 @@ void M590::print(const String s) {
 }
 
 bool M590::initialize(String pin) {
-    bool tmp;
-    if (!checkAlive() && _debugSerial) //checkAlive still gets executed
-        _debugSerial->println((__FlashStringHelper *) M590_ERROR_NOT_RESPONDING);
-    tmp = checkPinRequired();
-    if (_currentState == M590_STATE_FATAL_ERROR)
+    if (!checkAlive()) {//checkAlive still gets executed
+        printDebug(M590_ERROR_NOT_RESPONDING); //TODO: better error handling
         return false;
-    else if (tmp) {
+    }
+
+    checkPinRequired();
+    if (_currentState == M590_STATE_PIN_REQUIRED) {
         if (pin && pin != "")
-            tmp = sendPinEntry(pin);
+            sendPinEntry(pin); //sets state to pin_entry_done, when successful
         else {
-            if (_debugSerial) _debugSerial->println((__FlashStringHelper *) M590_ERROR_NO_PIN);
+            printDebug(M590_ERROR_NO_PIN);
             return false;
         }
-    }
-    if (tmp && _currentState == M590_STATE_PIN_ENTRY_DONE) {
+    } else if (_currentState == M590_STATE_FATAL_ERROR)
+        return false;
+
+    if (_currentState == M590_STATE_PIN_ENTRY_DONE) {
         _currentState = M590_STATE_PIN_VALIDATION;
         readForAsyncResponse(M590_RESPONSE_PIN_VAL_DONE); //start asnyc reading (execution continued in loop())
-    }
-    else {
+    } else if (_currentState == M590_STATE_PIN_VALIDATION_DONE) {
+        printDebug(M590_LOG_NO_PIN_REQUIRED);
+    } else {
         _currentState = M590_STATE_FATAL_ERROR;
-        logProgmemString(M590_ERROR_WRONG_PIN);
+        printDebug(M590_ERROR_WRONG_PIN);
     }
 }
 
@@ -231,7 +237,7 @@ m590NetworkStates M590::checkNetworkState() {
     m590ResponseCode r = readForResponse(M590_RESPONSE_OK, _responseBuffer, sizeof(_responseBuffer));
     //the fourth char in the response (e.g. " 0,3") will be the registration state (e.g. 3)
     if (r == M590_SUCCESS)
-        return (m590NetworkStates) _responseBuffer[3] - '0'; //convert to integer, maps to m590NetworkStates
+        return (m590NetworkStates) (_responseBuffer[3] - '0'); //convert to integer, maps to m590NetworkStates
     else return M590_NET_PARSE_ERROR;
 }
 
@@ -426,9 +432,9 @@ bool M590::bufferStartsWithProgmem(char *buffer, const char *progmemString) {
     return matches;
 }
 
-void logProgmemString(const char* progmemString, bool withNewline) {
-    if(_debugSerial) {
-        _debugSerial->print((__FlashStringHelper*) progmemString);
-        if(withNewline) _debugSerial->println();
+void M590::printDebug(const char *progmemString, bool withNewline) {
+    if (_debugSerial) {
+        _debugSerial->print((__FlashStringHelper *) progmemString);
+        if (withNewline) _debugSerial->println();
     }
 }
