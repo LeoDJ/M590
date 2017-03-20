@@ -3,48 +3,19 @@ created March 2017
 by Leandro Späth
 */
 
-#ifndef M590_h //handle including library twice
-#define M590_h
+#ifndef M590_H //handle including library twice
+#define M590_H
 
 #include <Arduino.h>
 #include <SoftwareSerial.h>
+
+#include <M590_Constants.h>
 
 #define COMMAND_TIMEOUT 1000
 #define ASYNC_TIMEOUT   20000
 #define STATUS_POLLING_RATE 250
 
-enum m590ResponseCode {
-    M590_SUCCESS,
-    M590_FAILURE,
-    M590_TIMEOUT,
-    M590_LENGTH_EXCEEDED,
-    M590_ASYNC_RUNNING,
-    M590_NO_PARAMETERS,
-    M590_UNDEFINED
-};
 
-enum m590States {
-    M590_STATE_FATAL_ERROR,                      //0
-    M590_STATE_SHUTDOWN,
-    M590_STATE_STARTUP,
-    M590_STATE_STARTUP_DONE,
-    M590_STATE_PIN_REQUIRED,
-    M590_STATE_PIN_ENTRY_DONE,                  //5
-    M590_STATE_PIN_VALIDATION,
-    M590_STATE_PIN_VALIDATION_DONE,
-    M590_STATE_CELLULAR_CONNECTING,
-    M590_STATE_CELLULAR_CONNECTED,
-};
-
-enum m590NetworkStates {
-    M590_NET_NOT_REGISTERED_NOT_SEARCHING,
-    M590_NET_REGISTERED,
-    M590_NET_REGISTRATION_REFUSED,
-    M590_NET_SEARCHING_NOT_REGISTERED,
-    M590_NET_UNKNOWN,
-    M590_NET_REGISTERED_ROAMING,
-    M590_NET_PARSE_ERROR, //not actually part of response, used to determine function failure
-};
 
 class M590 {
 public:
@@ -140,7 +111,7 @@ private:
 
      void _parseSerial();*/
 
-
+//TODO: implement some of the following functions
 /*void loop(); //function called on every loop
 //void begin(String pin); //connect to cellular network with pin
 byte getSignalStrength(); //return current signal strength
