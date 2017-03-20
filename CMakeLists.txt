@@ -51,4 +51,4 @@ add_custom_target(
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_executable(${PROJECT_NAME} ${SRC_LIST} src/M590_Constants.h)
+add_executable(${PROJECT_NAME} ${SRC_LIST} src/M590_GPRSClient.cpp src/M590_GPRSClient.h src/M590_Constants.h)

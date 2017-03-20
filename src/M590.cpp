@@ -50,6 +50,10 @@ void M590::shutdown() {
     _currentState = M590_STATE_SHUTDOWN;
 }
 
+m590States M590::getCurrentState() {
+    return _currentState;
+}
+
 bool M590::initialize(String pin) {
     if (!checkAlive()) {//checkAlive still gets executed
         printDebug(M590_ERROR_NOT_RESPONDING); //TODO: better error handling
@@ -108,7 +112,7 @@ void M590::loop() {
                 if (netState == M590_NET_REGISTERED)
                     _currentState = M590_STATE_CELLULAR_CONNECTED;
                 else if (netState == M590_NET_SEARCHING_NOT_REGISTERED) {
-                    printDebug("."); //print dots to show wait for registration
+                    printDebug(F(".")); //print dots to show wait for registration
                 } else {
                     _currentState = M590_STATE_FATAL_ERROR;
                     printDebug(M590_ERROR_UNHANDLED_NET_STATE);

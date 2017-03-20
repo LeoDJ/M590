@@ -10,6 +10,7 @@ by Leandro Späth
 #include <SoftwareSerial.h>
 
 #include <M590_Constants.h>
+#include <M590_GPRSClient.h>
 
 #define COMMAND_TIMEOUT 1000
 #define ASYNC_TIMEOUT   20000
@@ -53,6 +54,8 @@ public:
 
     bool waitForRegistration(const unsigned int timeout);
 
+    m590States getCurrentState();
+
 private:
     SoftwareSerial *_gsmSerial;
     HardwareSerial *_debugSerial;
@@ -63,7 +66,6 @@ private:
     byte _asyncResponseLength = 0;
     const char *_asyncProgmemResponseString = NULL;
     char _responseBuffer[16];
-
     byte asyncMatchedChars = 0;
 
     void sendCommandWithoutPrefix(const char *progmemCommand,
