@@ -1,7 +1,7 @@
-#Documentation
+# Documentation
 This folder includes some documentation about the Neoway M590 module, bought from [Banggood](http://www.banggood.com/GSM-GPRS-SIM900-1800MHz-Short-Message-Service-m590-SMS-Module-DIY-Kit-For-Arduino-p-1043437.html?p=U530099241512014110R).
 
-##Hardware Specification
+## Hardware Specification
 Specification | Description
 --- | ---
 Operating Current | 210mA
@@ -10,7 +10,7 @@ Sleep Mode Current | 2.5mA
 Supply Voltage | 3.3V - 4.5V <br>(recommended: 3.9V)
 for more specs, look into the [datasheet](m590 datasheet.pdf), page 6.
 
-##Pinout
+## Pinout
 Because there is no official pinout diagram of the header on the Banggood adapter pcb, I created my own. Here is the pinout of the module:
 
 PCB Pin | M590 Pin | Signal | Description
