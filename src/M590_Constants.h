@@ -58,7 +58,14 @@ const char
         M590_COMMAND_INPUT_PIN[]                PROGMEM = "CPIN=",
         M590_COMMAND_SHUTDOWN[]                 PROGMEM = "CPWROFF",
         M590_COMMAND_GET_SIGNAL_STRENGTH[]      PROGMEM = "CSQ",
-        M590_COMMAND_GET_NATIVE_NUMBER[]        PROGMEM = "CNUM";
+        M590_COMMAND_GET_NATIVE_NUMBER[]        PROGMEM = "CNUM",
+        M590_COMMAND_SET_TCP_STACK[]            PROGMEM = "XISP=",
+        M590_COMMAND_SET_APN[]                  PROGMEM = "CGDCONT=1,\"IP\",\"",
+        M590_COMMAND_ESTABLISH_LINK[]           PROGMEM = "XIIC=1",
+        M590_COMMAND_CHECK_LINK[]               PROGMEM = "XIIC?",
+        M590_COMMAND_DNS_REQUEST[]              PROGMEM = "DNS=\"",
+        M590_COMMAND_TCP_CONNECT[]              PROGMEM = "TCPSETUP=1,",
+        M590_COMMAND_TCP_REQUEST[]              PROGMEM = "TCPSEND=1,";
 
 const char
         M590_RESPONSE_PREFIX[]          PROGMEM = "+",//"\r\n+",

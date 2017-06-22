@@ -21,7 +21,6 @@ by Leandro Späth
 
 
 M590 gsm;
-M590GPRSClient client;
 
 void setup()
 {

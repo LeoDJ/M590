@@ -10,7 +10,6 @@ by Leandro Späth
 #include <SoftwareSerial.h>
 
 #include <M590_Constants.h>
-#include <M590_GPRSClient.h>
 
 #define COMMAND_TIMEOUT 1000
 #define ASYNC_TIMEOUT   20000
