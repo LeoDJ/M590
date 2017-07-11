@@ -43,6 +43,8 @@ public:
 
     m590NetworkStates checkNetworkState();
 
+    bool intitializeGPRS(String apn, )
+
     char read();
 
     void write(const char c);
