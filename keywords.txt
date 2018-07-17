@@ -5,23 +5,23 @@
 # Class (KEYWORD1)
 #######################################
 
-M590  KEYWORD1 M590
+M590	KEYWORD1 M590
 
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
 
-begin KEYWORD2
-loop  KEYWORD2
-enableDebugSerial KEYWORD2
-initialize KEYWORD2
-getSignalStrength KEYWORD2
-beginGPRS KEYWORD2
-connectTCP  KEYWORD2
-disconnectTCP KEYWORD2
-doRequest KEYWORD2
-dns KEYWORD2
-sendAT  KEYWORD2
+begin	KEYWORD2
+loop	KEYWORD2
+enableDebugSerial	KEYWORD2
+initialize	KEYWORD2
+getSignalStrength	KEYWORD2
+beginGPRS	KEYWORD2
+connectTCP	KEYWORD2
+disconnectTCP	KEYWORD2
+doRequest	KEYWORD2
+dns	KEYWORD2
+sendAT	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
